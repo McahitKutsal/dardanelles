@@ -53,12 +53,12 @@ func ScanOpenPorts(ip string, port int, timeout time.Duration) {
 	fmt.Println(port, "is open")
 }
 
-func (ps *PortScanner) Start() {
+func (ps *PortScanner) Start(initial, final int) {
 	//Go rutinlerin bitmesini beklemek için bir waitgroup nesnesi
 	wg := sync.WaitGroup{}
 	//wait group counter 0 olana kadar bekletir
 	defer wg.Wait()
-	for port := 1; port <= 6553; port++ {
+	for port := initial; port <= final; port++ {
 		//5000 thread olarak belirlenmiş semafor nesnesine her port numarası için 1 context eklenir
 		ps.Thread.Acquire(context.TODO(), 1)
 		//wait group nesnesinin sayacına 1 ekliyoruz
