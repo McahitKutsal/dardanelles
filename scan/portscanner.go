@@ -22,6 +22,7 @@ type PortScanner struct {
 	Thread  *semaphore.Weighted
 	Up      bool
 	latency time.Duration
+	results []string
 }
 
 func (ps *PortScanner) ScanPort(protocol, hostname string, port int) ScanResult {
@@ -37,7 +38,7 @@ func (ps *PortScanner) ScanPort(protocol, hostname string, port int) ScanResult 
 	return result
 }
 
-func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration, arr *[]string) {
+func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration) {
 
 	target := fmt.Sprintf("%s:%d", ip, port)
 	start := time.Now()
@@ -47,7 +48,7 @@ func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration,
 	if err != nil {
 		if strings.Contains(err.Error(), "too many open files") {
 			time.Sleep(timeout)
-			ps.ScanOpenPorts(ip, port, timeout, arr)
+			ps.ScanOpenPorts(ip, port, timeout)
 		} else {
 			//fmt.Println(port, "closed")
 		}
@@ -55,32 +56,32 @@ func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration,
 		ps.Up = true
 		ps.latency = latency
 		defer conn.Close()
-		s := "port:" + strconv.Itoa(port) + "[Open] -> " + ports.PredictPort(port)
-		*arr = append(*arr, s)
+		s := "port: " + strconv.Itoa(port) + " [Open] -> " + ports.PredictPort(port)
+		ps.results = append(ps.results, s)
 	}
 
 }
 
 func (ps *PortScanner) Start(initial, final int) {
 	wg := sync.WaitGroup{}
-	var arr []string
 	defer wg.Wait()
 	for port := initial; port <= final; port++ {
 		ps.Thread.Acquire(context.TODO(), 1)
 		wg.Add(1)
 		go func(port int) {
-			ps.ScanOpenPorts(ps.Ip, port, 2*time.Second, &arr)
+			ps.ScanOpenPorts(ps.Ip, port, 2*time.Second)
 			defer ps.Thread.Release(1)
 			defer wg.Done()
 		}(port)
 
 	}
-	boolean := ps.Up
-	if boolean {
+
+}
+func (ps *PortScanner) ScanResult() {
+	if ps.Up {
 		fmt.Println("\nServer is Up With", ps.latency, "Latency\n")
 	}
-	for _, s := range arr {
+	for _, s := range ps.results {
 		fmt.Println(s)
 	}
-
 }

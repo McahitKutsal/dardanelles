@@ -40,6 +40,7 @@ func main() {
 	}
 	if customFlag.GetPort() == 0 {
 		portScanner.Start(customFlag.Interval.GetStart(), customFlag.Interval.GetEnd())
+		portScanner.ScanResult()
 	} else {
 		scanResult := portScanner.ScanPort("tcp", address, portNum)
 		fmt.Println("address:", address, "port:", portNum, "[", scanResult.State, "] ->", ports.PredictPort(portNum))
