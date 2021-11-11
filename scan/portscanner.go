@@ -3,6 +3,7 @@ package scan
 import (
 	"context"
 	"fmt"
+	"main/ports"
 	"net"
 	"strconv"
 	"strings"
@@ -17,14 +18,16 @@ type ScanResult struct {
 	State string
 }
 type PortScanner struct {
-	Ip     string
-	Thread *semaphore.Weighted
+	Ip      string
+	Thread  *semaphore.Weighted
+	Up      bool
+	latency time.Duration
 }
 
 func (ps *PortScanner) ScanPort(protocol, hostname string, port int) ScanResult {
 	result := ScanResult{Port: port}
 	adress := hostname + ":" + strconv.Itoa(port)
-	conn, err := net.DialTimeout(protocol, adress, time.Second*1)
+	conn, err := net.DialTimeout(protocol, adress, time.Second*2)
 	if err != nil {
 		result.State = "Closed"
 		return result
@@ -34,41 +37,50 @@ func (ps *PortScanner) ScanPort(protocol, hostname string, port int) ScanResult 
 	return result
 }
 
-func ScanOpenPorts(ip string, port int, timeout time.Duration) {
+func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration, arr *[]string) {
+
 	target := fmt.Sprintf("%s:%d", ip, port)
+	start := time.Now()
 	conn, err := net.DialTimeout("tcp", target, timeout)
+	latency := time.Duration(time.Since(start).Milliseconds())
 
 	if err != nil {
-		//sistemin gönderilen istekleri karşılayamaması durumunda alınan hata
-		//portu atlamamak için programı uyutup aynı porta tekrar istek atıyoruz
 		if strings.Contains(err.Error(), "too many open files") {
 			time.Sleep(timeout)
-			ScanOpenPorts(ip, port, timeout)
+			ps.ScanOpenPorts(ip, port, timeout, arr)
 		} else {
 			//fmt.Println(port, "closed")
 		}
-		return
+	} else {
+		ps.Up = true
+		ps.latency = latency
+		defer conn.Close()
+		s := "port:" + strconv.Itoa(port) + "[Open] -> " + ports.PredictPort(port)
+		*arr = append(*arr, s)
 	}
-	defer conn.Close()
-	fmt.Println(port, "is open")
+
 }
 
 func (ps *PortScanner) Start(initial, final int) {
-	//Go rutinlerin bitmesini beklemek için bir waitgroup nesnesi
 	wg := sync.WaitGroup{}
-	//wait group counter 0 olana kadar bekletir
+	var arr []string
 	defer wg.Wait()
 	for port := initial; port <= final; port++ {
-		//5000 thread olarak belirlenmiş semafor nesnesine her port numarası için 1 context eklenir
 		ps.Thread.Acquire(context.TODO(), 1)
-		//wait group nesnesinin sayacına 1 ekliyoruz
 		wg.Add(1)
 		go func(port int) {
-			ScanOpenPorts(ps.Ip, port, 2*time.Second)
-			//işi biten semafor serbest kalıyor
+			ps.ScanOpenPorts(ps.Ip, port, 2*time.Second, &arr)
 			defer ps.Thread.Release(1)
-			//wait group nesnesinin sayacından 1 çıkarıyoruz
 			defer wg.Done()
 		}(port)
+
 	}
+	boolean := ps.Up
+	if boolean {
+		fmt.Println("\nServer is Up With", ps.latency, "Latency\n")
+	}
+	for _, s := range arr {
+		fmt.Println(s)
+	}
+
 }

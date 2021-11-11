@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"main/flagvalue"
+	"main/ports"
 	scanner "main/scan"
 
 	"golang.org/x/sync/semaphore"
@@ -22,14 +23,12 @@ func main() {
 	flag.IntVar(&portNum, "port", 0, "port for specified address")
 	flag.Parse()
 	stringInterval := flag.Args()
-
+	customFlag = *customFlag.NewCustomFlag()
+	customFlag.SetAddress(address)
 	numberInterval, err := flagvalue.CheckInterval(stringInterval, portNum)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	customFlag = *customFlag.NewCustomFlag()
-	customFlag.SetAddress(address)
 	customFlag.SetPort(portNum)
 	customFlag.Interval.SetStart(numberInterval[0])
 	customFlag.Interval.SetEnd(numberInterval[1])
@@ -37,11 +36,12 @@ func main() {
 	portScanner := &scanner.PortScanner{
 		Ip:     customFlag.GetAddress(),
 		Thread: semaphore.NewWeighted(5000),
+		Up:     false,
 	}
 	if customFlag.GetPort() == 0 {
 		portScanner.Start(customFlag.Interval.GetStart(), customFlag.Interval.GetEnd())
 	} else {
 		scanResult := portScanner.ScanPort("tcp", address, portNum)
-		fmt.Println("address:", address, "port:", portNum, "is", scanResult.State)
+		fmt.Println("address:", address, "port:", portNum, "[", scanResult.State, "] ->", ports.PredictPort(portNum))
 	}
 }
