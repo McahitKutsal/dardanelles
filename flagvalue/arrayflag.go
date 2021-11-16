@@ -16,6 +16,7 @@ type ArrayFlags struct {
 	end   int
 }
 
+//Yapıcı fonksiyon olduğu için pointer döndürür
 func (c *CustomFlag) NewCustomFlag() *CustomFlag {
 	c = &CustomFlag{}
 	c.port = 0
@@ -60,9 +61,10 @@ func (i *ArrayFlags) SetEnd(value int) {
 	i.end = value
 }
 
+//Kuyruk flag'inin kontrolleri
 func CheckInterval(stringInterval []string, portNum int) ([]int, error) {
 	if portNum != 0 && len(stringInterval) != 0 {
-		return nil, errors.New("you can't use '--port' flag when you trying to scan a port interval")
+		return nil, errors.New("you can't use '--port' flag when you are trying to scan a port interval")
 	}
 	if len(stringInterval) == 0 {
 		slice := []int{1, 6553}

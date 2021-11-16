@@ -7,7 +7,7 @@ func PredictPort(port int) string {
 	return "<UNKNOWN>"
 }
 
-// data from https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv
+// veri https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv
 var KNOWN_PORTS = map[int]string{
 	1:           "tcpmux",
 	2:           "compressnet",
