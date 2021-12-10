@@ -45,7 +45,7 @@ func (ps *PortScanner) ScanPort(protocol, hostname string, port int) ScanResult 
 }
 
 //geniş tarama için kullanılan fonksiyon
-func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration) {
+func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration, c bool) {
 
 	target := fmt.Sprintf("%s:%d", ip, port)
 	start := time.Now()
@@ -56,9 +56,12 @@ func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration)
 	if err != nil {
 		if strings.Contains(err.Error(), "too many open files") {
 			time.Sleep(timeout)
-			ps.ScanOpenPorts(ip, port, timeout)
+			ps.ScanOpenPorts(ip, port, timeout, c)
 		} else {
-			//fmt.Println(port, "closed")
+			if c {
+				s := "port: " + strconv.Itoa(port) + " [Closed] -> " + ports.PredictPort(port)
+				ps.results = append(ps.results, s)
+			}
 		}
 	} else {
 		ps.Up = true
@@ -71,21 +74,22 @@ func (ps *PortScanner) ScanOpenPorts(ip string, port int, timeout time.Duration)
 
 }
 
-func (ps *PortScanner) Start(initial, final int) {
+func (ps *PortScanner) Start(initial, final int, c bool) {
 	fmt.Println("Scanning ports...")
-	//Taranacak ip adresinin portları için bir beklmee grubu oluşturulur
+	//Taranacak ip adresinin portları için bir bekleme grubu oluşturulur
 	wg := sync.WaitGroup{}
-	//Bekleme grubunun sayacı sıfıra ulaşmadan
+	//Bekleme grubunun sayacı sıfıra ulaşmadan fonksiyonun dışına çıkılmaz
+	// yani döngü bitse bile eşzamanlı fonksiyonlar bitmediği için sonuçlar ekrana yazıdırlmaz
 	defer wg.Wait()
 	for port := initial; port <= final; port++ {
 		//Bir adet semaphore açılır
 		ps.Thread.Acquire(context.TODO(), 1)
 		//Taranacak her bir port numarası için bekleme grubunun sayacı 1 arttırılır
 		wg.Add(1)
-		//Aşağıdaki fonksiyon her çalıştırıldığında for döngüsünden kopar ve programın geri kalanının akışından bapımsız çalışır
+		//Aşağıdaki fonksiyon her çalıştırıldığında for döngüsünden kopar ve programın geri kalanının akışından bağımsız çalışır
 		go func(port int) {
 			//parametre ile alınan port numarası taranır
-			ps.ScanOpenPorts(ps.Ip, port, 2*time.Second)
+			ps.ScanOpenPorts(ps.Ip, port, 2*time.Second, c)
 			//yukarıda açılan semaphore yeni bir port taramak için serbest bırakılır
 			defer ps.Thread.Release(1)
 			//bekleme grubunun sayacı 1 azaltılır

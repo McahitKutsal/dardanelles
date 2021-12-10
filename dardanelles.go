@@ -19,8 +19,10 @@ var (
 
 func main() {
 	//Okunacak flag'lerin tanımlanması
+	boolPtr := flag.Bool("c", false, "")
 	flag.StringVar(&address, "address", "", "address to scan")
 	flag.IntVar(&portNum, "port", 0, "port for specified address")
+
 	flag.Parse()
 	stringInterval := flag.Args()
 	//customFlag objesine okunan flagler set edilir varsa kuyruk set edilir
@@ -39,16 +41,17 @@ func main() {
 		Ip: customFlag.GetAddress(),
 		// Semaphore eş zamanlı programlama ortamında kaynak yönetimi için kullanılan bir objedir
 		// Bir task'tan diğerine sinyal göndermek için de kullanılır.
-		Thread: semaphore.NewWeighted(5000),
+		Thread: semaphore.NewWeighted(10000),
 		Up:     false,
 	}
 	if customFlag.GetPort() == 0 {
 		//Kullanıcı bir port flag'i girmemişse veya bir aralık girmiş ise çalışır
-		portScanner.Start(customFlag.Interval.GetStart(), customFlag.Interval.GetEnd())
+		portScanner.Start(customFlag.Interval.GetStart(), customFlag.Interval.GetEnd(), *boolPtr)
 		portScanner.ScanResult()
 	} else {
 		//Kullanıcı bir port flag'i girmiş ise çalışır
 		scanResult := portScanner.ScanPort("tcp", address, portNum)
 		fmt.Println("address:", address, "port:", portNum, "[", scanResult.State, "] ->", ports.PredictPort(portNum))
 	}
+
 }

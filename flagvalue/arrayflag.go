@@ -22,7 +22,7 @@ func (c *CustomFlag) NewCustomFlag() *CustomFlag {
 	c.port = 0
 	c.address = ""
 	c.Interval.start = 1
-	c.Interval.end = 6553
+	c.Interval.end = 65535
 	return c
 }
 
@@ -67,7 +67,7 @@ func CheckInterval(stringInterval []string, portNum int) ([]int, error) {
 		return nil, errors.New("you can't use '--port' flag when you are trying to scan a port interval")
 	}
 	if len(stringInterval) == 0 {
-		slice := []int{1, 6553}
+		slice := []int{1, 65535}
 		return slice, nil
 	}
 	slice := []int{}
@@ -86,7 +86,7 @@ func CheckInterval(stringInterval []string, portNum int) ([]int, error) {
 		return nil, errors.New("initial port number cannot be greater or equal than final port number")
 	} else if slice[0] < 1 {
 		return nil, errors.New("initial port number cannot be less than 1")
-	} else if slice[1] > 6553 {
+	} else if slice[1] > 65535 {
 		return nil, errors.New("final port number cannot be greater than 6553")
 	}
 	return slice, nil
